@@ -35,9 +35,9 @@ public class FacebookAdPlugin extends GenericAdPlugin {
     private static final String TEST_BANNER_ID = "Your APP ID";
     private static final String TEST_INTERSTITIAL_ID = "Your APP ID";
     private static final String TEST_NATIVEAD_ID = "Your APP ID";
-    
+
     private AdSize adSize;
-    
+
 	private static final String OPT_DEVICE_HASH = "deviceHash";
 	private String deviceHash = "";
 
@@ -45,9 +45,9 @@ public class FacebookAdPlugin extends GenericAdPlugin {
 	public static final String ACTION_REMOVE_NATIVEAD = "removeNativeAd";
 	public static final String ACTION_SET_NATIVEAD_CLICKAREA = "setNativeAdClickArea";
         public static final String ACTION_CLICK_ADCHOICE = "AdchoiceClicked";
-	
+
 	private RelativeLayout layout;
-	
+
 	public class FlexNativeAd {
 		public String adId;
 		public int x, y, w, h;
@@ -55,16 +55,16 @@ public class FacebookAdPlugin extends GenericAdPlugin {
 		public View view;
 		public View tracking;
 	};
-	
+
 	private HashMap<String, FlexNativeAd> nativeAds = new HashMap<String, FlexNativeAd>();
 
     @Override
     protected void pluginInitialize() {
     	super.pluginInitialize();
-    	
+
     	this.adSize = __AdSizeFromString("SMART_BANNER");
 	}
-    
+
     protected AdSize __AdSizeFromString(String str) {
     	AdSize sz;
     	if("BANNER".equals(str)) {
@@ -74,10 +74,10 @@ public class FacebookAdPlugin extends GenericAdPlugin {
     	} else {
     		sz = isTablet() ? AdSize.BANNER_HEIGHT_90 : AdSize.BANNER_HEIGHT_50;
     	}
-    	
+
     	return sz;
     }
-    
+
 	public boolean isTablet() {
 		Configuration conf = getActivity().getResources().getConfiguration();
         boolean xlarge = ((conf.screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) == 4);
@@ -99,7 +99,7 @@ public class FacebookAdPlugin extends GenericAdPlugin {
 	protected String __getTestInterstitialId() {
 		return TEST_INTERSTITIAL_ID;
 	}
-	
+
 	protected String __getTestNativeAdId() {
 		return TEST_NATIVEAD_ID;
 	}
@@ -107,18 +107,18 @@ public class FacebookAdPlugin extends GenericAdPlugin {
     @Override
     public boolean execute(String action, JSONArray inputs, CallbackContext callbackContext) throws JSONException {
         PluginResult result = null;
-        
+
     	if (ACTION_CREATE_NATIVEAD.equals(action)) {
             String adid = inputs.optString(0);
             if(this.testTraffic) adid = this.__getTestNativeAdId();
             this.createNativeAd(adid);
             result = new PluginResult(Status.OK);
-            
+
     	} else if (ACTION_REMOVE_NATIVEAD.equals(action)) {
             String adid = inputs.optString(0);
             this.removeNativeAd(adid);
             result = new PluginResult(Status.OK);
-            
+
     	} else if (ACTION_SET_NATIVEAD_CLICKAREA.equals(action)) {
             String adid = inputs.optString(0);
             int x = inputs.optInt(1);
@@ -127,8 +127,8 @@ public class FacebookAdPlugin extends GenericAdPlugin {
             int h = inputs.optInt(4);
             this.setNativeAdClickArea(adid, x, y, w, h);
             result = new PluginResult(Status.OK);
-            
-    	} 
+
+    	}
         else if (ACTION_CLICK_ADCHOICE.equals(action)) {
             String adid = inputs.optString(0);
             int x = inputs.optInt(1);
@@ -137,16 +137,16 @@ public class FacebookAdPlugin extends GenericAdPlugin {
             int h = inputs.optInt(4);
             this.setNativeAdClickArea(adid, x, y, w, h);
             result = new PluginResult(Status.OK);
-            
+
     	}else {
     		return super.execute(action, inputs, callbackContext);
     	}
-    	
+
     	if(result != null) sendPluginResult(result, callbackContext);
-    	
+
 		return true;
     }
-    
+
     public void createNativeAd(final String adId) {
 	  	Log.d(LOGTAG, "createNativeAd: " + adId);
 	    final Activity activity = getActivity();
@@ -156,7 +156,7 @@ public class FacebookAdPlugin extends GenericAdPlugin {
             	if(nativeAds.containsKey(adId)) {
             		removeNativeAd(adId);
             	}
-            	
+
             	if(layout == null) {
             		layout = new RelativeLayout(getActivity());
             		RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
@@ -165,12 +165,12 @@ public class FacebookAdPlugin extends GenericAdPlugin {
             		ViewGroup parentView = (ViewGroup) getView().getRootView();
             		parentView.addView(layout, params);
             	}
-            	
+
             	FlexNativeAd unit = new FlexNativeAd();
             	unit.adId = adId;
             	unit.x = unit.y = 0;
 				unit.w = unit.h = 4;
-            	
+
             	unit.view = new View(getActivity());
 				unit.tracking = new View(getActivity());
 				layout.addView(unit.tracking, new RelativeLayout.LayoutParams(unit.w, unit.h));
@@ -223,8 +223,9 @@ public class FacebookAdPlugin extends GenericAdPlugin {
             	unit.ad.setAdListener(new AdListener(){
             	    @Override
             	    public void onError(Ad ad, AdError error) {
-                    	fireAdErrorEvent(EVENT_AD_FAILLOAD, error.getErrorCode(), error.getErrorMessage(), ADTYPE_NATIVE);
-            	    }
+                        String json = String.format("{'adId':'%s','adNetwork':'%s','adType':'%s','adEvent':'%s','error':%d,'reason':'%s'}", new Object[]{adId, __getProductShortName(), ADTYPE_NATIVE, EVENT_AD_FAILLOAD, Integer.valueOf(error.getErrorCode()), error.getErrorMessage()});
+                        fireEvent(__getProductShortName(), EVENT_AD_FAILLOAD, json);
+                    }
 
             	    @Override
             	    public void onAdLoaded(Ad ad) {
@@ -241,14 +242,14 @@ public class FacebookAdPlugin extends GenericAdPlugin {
 						// Ad impression logged callback
 				    }
             	});
-            	
+
             	nativeAds.put(adId, unit);
-            	
+
             	unit.ad.loadAd();
             }
 	    });
     }
-    
+
     public void fireNativeAdLoadEvent(Ad ad) {
         Iterator<String> it = nativeAds.keySet().iterator();
         while(it.hasNext()) {
@@ -270,7 +271,7 @@ public class FacebookAdPlugin extends GenericAdPlugin {
 					json.put("adEvent", EVENT_AD_LOADED);
 					json.put("adType", ADTYPE_NATIVE);
 					json.put("adId", unit.adId);
-					
+
 					JSONObject adRes = new JSONObject();
 					adRes.put("title", titleForAd);
 					adRes.put("socialContext", socialContextForAd);
@@ -280,14 +281,14 @@ public class FacebookAdPlugin extends GenericAdPlugin {
                         adRes.put("rating", appRatingForAd.getValue());
                         adRes.put("ratingScale", appRatingForAd.getScale());
                     }
-					
+
 					JSONObject coverInfo = new JSONObject();
                     if(coverImage != null) {
                         coverInfo.put("url", coverImage.getUrl());
                         coverInfo.put("width", coverImage.getWidth());
                         coverInfo.put("height", coverImage.getHeight());
                     }
-					
+
 					JSONObject iconInfo = new JSONObject();
                     if(iconForAd != null) {
                         iconInfo.put("url", iconForAd.getUrl());
@@ -304,21 +305,21 @@ public class FacebookAdPlugin extends GenericAdPlugin {
                         Log.d(LOGTAG, "unit.ad.getAdChoicesLinkUrl() : " + unit.ad.getAdChoicesLinkUrl());
 //                           
                     }
-					
+
 					adRes.put("coverImage", coverInfo);
 					adRes.put("icon", iconInfo);
                                         adRes.put("adchoice", adchoiceInfo);
 					json.put("adRes", adRes);
-					
+
 					jsonData = json.toString();
 				} catch(Exception e) {
 				}
                 if (unit.ad != null) {
                   unit.ad.unregisterView();
-                 
+
                   unit.ad.registerViewForInteraction(unit.tracking);
                 }
-                
+
 				fireEvent(__getProductShortName(), EVENT_AD_LOADED, jsonData);
         		break;
         	}
@@ -348,7 +349,7 @@ public class FacebookAdPlugin extends GenericAdPlugin {
             }
 	    });
     }
-    
+
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
 	public void setNativeAdClickArea(final String adId, int x, int y, int w, int h) {
 		final FlexNativeAd unit = nativeAds.get(adId);
@@ -390,7 +391,7 @@ public class FacebookAdPlugin extends GenericAdPlugin {
 	@Override
 	public void setOptions(JSONObject options) {
 		super.setOptions(options);
-		
+
 		if(options.has(OPT_AD_SIZE)) {
 			this.adSize = __AdSizeFromString(options.optString(OPT_AD_SIZE));
 		}
@@ -404,14 +405,14 @@ public class FacebookAdPlugin extends GenericAdPlugin {
 //                Log.d(LOGTAG, "set device hash: " + this.deviceHash);
 		if(isTesting) {
 			testTraffic = true;
-			
+
         	if(options.has(OPT_DEVICE_HASH)) {
         		this.deviceHash = options.optString( OPT_DEVICE_HASH );
                 Log.d(LOGTAG, "set device hash: " + this.deviceHash);
     			AdSettings.addTestDevice("bbbb29bbf199262cb14c924d692b11ef");
 
         	}
-			
+
 			SharedPreferences adPrefs = getActivity().getSharedPreferences("FBAdPrefs", 0);
 			String deviceIdHash = adPrefs.getString("deviceIdHash", (String)null);
             if (deviceIdHash == null) {
